@@ -44,9 +44,9 @@ export default function IssueCard({
   };
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden shadow-elevated hover:shadow-floating transition-all duration-200 mb-md">
+    <div className="bg-white border border-neutral-200 rounded-lg shadow-elevated hover:shadow-floating transition-all duration-200 mb-md relative">
       {/* Image Section */}
-      <div className="relative h-[180px] md:h-[200px] bg-gradient-to-br from-neutral-200 to-neutral-300 overflow-hidden flex items-center justify-center">
+      <div className="relative h-[180px] md:h-[200px] bg-gradient-to-br from-neutral-200 to-neutral-300 overflow-hidden flex items-center justify-center rounded-t-lg">
         {issue.imageUrl ? (
           <img
             src={issue.imageUrl}
@@ -136,6 +136,7 @@ export default function IssueCard({
           {!hideAssign && (
             <div className="relative flex-1">
               <button
+                type="button"
                 onClick={() => setShowAssignDropdown(!showAssignDropdown)}
                 className="w-full px-md py-sm bg-primary-700 text-white rounded-md font-semibold hover:bg-primary-800 transition-colors text-sm flex items-center justify-center gap-sm"
               >
@@ -145,28 +146,33 @@ export default function IssueCard({
 
               {/* Dropdown Menu */}
               {showAssignDropdown && (
-                <div className="absolute top-full mt-2 right-0 left-0 bg-white border border-neutral-200 rounded-md shadow-floating z-10 min-w-[280px] md:min-w-[300px]">
+                <div className="absolute top-full mt-2 right-0 left-0 bg-white border border-neutral-200 rounded-md shadow-lg z-50 min-w-[280px] md:min-w-[320px]">
                   <div className="p-md max-h-[300px] overflow-y-auto">
-                    <p className="text-xs font-bold text-neutral-500 mb-sm">SELECT A WORKER</p>
-                    {workers.map((worker) => (
-                      <button
-                        key={worker.id}
-                        onClick={() => handleAssignWorker(worker)}
-                        className="w-full text-left px-md py-sm hover:bg-neutral-100 rounded mb-sm transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={`material-icons ${worker.status === 'free' ? 'text-success' : 'text-warning'}`}>
-                            {worker.status === 'free' ? 'radio_button_checked' : 'schedule'}
-                          </span>
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-neutral-800">{worker.name}</p>
-                            <p className="text-xs text-neutral-500">
-                              {worker.dept} • {worker.distance}
-                            </p>
+                    <p className="text-xs font-bold text-neutral-500 mb-md">SELECT A WORKER</p>
+                    {workers.length > 0 ? (
+                      workers.map((worker) => (
+                        <button
+                          key={worker.id}
+                          type="button"
+                          onClick={() => handleAssignWorker(worker)}
+                          className="w-full text-left px-md py-sm hover:bg-primary-50 rounded mb-sm transition-colors"
+                        >
+                          <div className="flex items-center gap-md">
+                            <span className={`material-icons text-sm font-bold ${worker.status === 'free' ? 'text-success-600' : 'text-warning-600'}`}>
+                              {worker.status === 'free' ? 'check_circle' : 'schedule'}
+                            </span>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-neutral-800">{worker.name}</p>
+                              <p className="text-xs text-neutral-500">
+                                {worker.dept} • {worker.distance}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-sm text-neutral-600 text-center py-md">No workers available</p>
+                    )}
                   </div>
                 </div>
               )}

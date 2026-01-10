@@ -7,6 +7,7 @@ export default function WorkerDashboard() {
   const [showCompletionForm, setShowCompletionForm] = useState(false);
   const [completionNote, setCompletionNote] = useState('');
   const [completionPhoto, setCompletionPhoto] = useState(null);
+  const [selectedRecentJob, setSelectedRecentJob] = useState(null);
 
   // Current assignment
   const currentAssignment = {
@@ -207,7 +208,13 @@ export default function WorkerDashboard() {
               </div>
 
               {/* Open Maps Button */}
-              <button className="w-full bg-primary-700 hover:bg-primary-800 text-white font-bold py-md rounded-lg transition-colors flex items-center justify-center gap-sm">
+              <button 
+                onClick={() => {
+                  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${currentAssignment.latitude},${currentAssignment.longitude}`;
+                  window.open(mapsUrl, '_blank');
+                }}
+                className="w-full bg-primary-700 hover:bg-primary-800 text-white font-bold py-md rounded-lg transition-colors flex items-center justify-center gap-sm"
+              >
                 <span className="material-icons">directions</span>
                 Open in Google Maps
               </button>
@@ -235,25 +242,52 @@ export default function WorkerDashboard() {
 
               {/* Status Buttons */}
               <div className="grid grid-cols-2 gap-md pt-md border-t border-neutral-300">
-                {jobStatus !== 'on-way' && (
+                {jobStatus === 'assigned' && (
                   <button
                     onClick={() => handleStatusChange('on-way')}
-                    className="bg-primary-100 hover:bg-primary-200 text-primary-700 font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
+                    className="col-span-2 bg-primary-100 hover:bg-primary-200 text-primary-700 font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
                   >
                     <span className="material-icons">directions</span>
                     On the Way
                   </button>
                 )}
-                {jobStatus !== 'in-progress' && (
-                  <button
-                    onClick={() => handleStatusChange('in-progress')}
-                    className="bg-warning-100 hover:bg-warning-200 text-warning-700 font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
-                  >
-                    <span className="material-icons">build</span>
-                    In Progress
-                  </button>
+                {jobStatus === 'on-way' && (
+                  <>
+                    <button
+                      disabled
+                      className="bg-primary-100 text-primary-700 font-bold py-md px-lg rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-icons">check</span>
+                      On the Way
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange('in-progress')}
+                      className="bg-warning-100 hover:bg-warning-200 text-warning-700 font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-icons">build</span>
+                      In Progress
+                    </button>
+                  </>
                 )}
-                {jobStatus !== 'completed' && (
+                {jobStatus === 'in-progress' && (
+                  <>
+                    <button
+                      disabled
+                      className="bg-warning-100 text-warning-700 font-bold py-md px-lg rounded-lg opacity-50 cursor-not-allowed flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-icons">check</span>
+                      In Progress
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange('completed')}
+                      className="bg-success-600 hover:bg-success-700 text-white font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
+                    >
+                      <span className="material-icons">check_circle</span>
+                      Complete
+                    </button>
+                  </>
+                )}
+                {jobStatus !== 'completed' && jobStatus !== 'on-way' && jobStatus !== 'in-progress' && (
                   <button
                     onClick={() => handleStatusChange('completed')}
                     className="col-span-2 bg-success-600 hover:bg-success-700 text-white font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm"
@@ -262,14 +296,12 @@ export default function WorkerDashboard() {
                     Mark Complete
                   </button>
                 )}
-              </div>
-
-              {/* Navigate Button */}
-              <div className="pt-md border-t border-neutral-300">
-                <button className="w-full bg-primary-700 hover:bg-primary-800 text-white font-bold py-md px-lg rounded-lg transition-colors flex items-center justify-center gap-sm">
-                  <span className="material-icons">directions</span>
-                  Navigate to Location
-                </button>
+                {jobStatus === 'completed' && (
+                  <div className="col-span-2 bg-success-100 text-success-700 font-bold py-md px-lg rounded-lg flex items-center justify-center gap-sm">
+                    <span className="material-icons">check_circle</span>
+                    Job Completed
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -284,7 +316,11 @@ export default function WorkerDashboard() {
 
           <div className="space-y-md">
             {recentJobs.map((job) => (
-              <div key={job.id} className="bg-white rounded-lg border border-neutral-200 shadow-sm p-md hover:shadow-md transition-shadow">
+              <div 
+                key={job.id} 
+                onClick={() => setSelectedRecentJob(job)}
+                className="bg-white rounded-lg border border-neutral-200 shadow-sm p-md hover:shadow-md transition-shadow cursor-pointer hover:border-primary-300"
+              >
                 <div className="flex items-start justify-between gap-md">
                   <div className="flex-1">
                     <p className="font-semibold text-neutral-800">{job.title}</p>
@@ -361,6 +397,70 @@ export default function WorkerDashboard() {
               >
                 Submit Completion
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Job Details Modal */}
+      {selectedRecentJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-md z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-neutral-200 px-lg py-md flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-neutral-800">{selectedRecentJob.title}</h2>
+              <button
+                onClick={() => setSelectedRecentJob(null)}
+                className="text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-lg space-y-lg">
+              {/* Status */}
+              <div>
+                <p className="text-xs font-bold text-neutral-500 mb-sm">STATUS</p>
+                <span className="inline-flex items-center gap-sm px-md py-sm rounded text-sm font-bold text-white bg-success-600">
+                  <span className="material-icons text-sm">check_circle</span>
+                  Completed
+                </span>
+              </div>
+
+              {/* Location & Completion Time */}
+              <div className="grid grid-cols-2 gap-lg">
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">LOCATION</p>
+                  <p className="text-base font-semibold text-neutral-800 flex items-center gap-sm">
+                    <span className="material-icons text-sm">location_on</span>
+                    {selectedRecentJob.location}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">COMPLETED</p>
+                  <p className="text-base font-semibold text-neutral-800 flex items-center gap-sm">
+                    <span className="material-icons text-sm">access_time</span>
+                    {selectedRecentJob.completedTime}
+                  </p>
+                </div>
+              </div>
+
+              {/* Job ID */}
+              <div className="bg-neutral-50 p-lg rounded-lg border border-neutral-200">
+                <p className="text-xs font-bold text-neutral-500 mb-sm">JOB ID</p>
+                <p className="text-base font-semibold text-neutral-800">{selectedRecentJob.id}</p>
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-lg border-t border-neutral-200">
+                <button
+                  onClick={() => setSelectedRecentJob(null)}
+                  className="w-full px-md py-md bg-primary-700 text-white rounded-md font-semibold hover:bg-primary-800 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

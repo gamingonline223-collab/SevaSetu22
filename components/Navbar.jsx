@@ -45,11 +45,6 @@ export default function Navbar() {
 
       {/* Right: Icons & Profile */}
       <div className="flex items-center gap-md md:gap-lg">
-        {/* Mobile Search Icon */}
-        <button className="md:hidden text-neutral-600 hover:text-primary-700 transition-colors">
-          <span className="material-icons">search</span>
-        </button>
-
         {/* Notifications */}
         <button className="relative text-neutral-600 hover:text-primary-700 transition-colors">
           <span className="material-icons">notifications</span>

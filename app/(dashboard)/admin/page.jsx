@@ -146,6 +146,11 @@ export default function AdminDashboard() {
   const [assignedWorkers, setAssignedWorkers] = useState({});
   const [mobileTab, setMobileTab] = useState('issues'); // 'issues' or 'status'
   const [workersOpen, setWorkersOpen] = useState(false); // Mobile workers side panel
+  const [filterPriority, setFilterPriority] = useState(null); // Filter state
+  const [showFilterMenu, setShowFilterMenu] = useState(false); // Filter menu visibility
+  const [sortType, setSortType] = useState(null); // Sort state: null, 'priority-high', 'priority-low', 'newest', 'oldest'
+  const [showSortMenu, setShowSortMenu] = useState(false); // Sort menu visibility
+  const [searchQuery, setSearchQuery] = useState(''); // Search query state
 
   const handleViewDetails = (issue) => {
     setSelectedIssue(issue);
@@ -164,9 +169,79 @@ export default function AdminDashboard() {
   };
 
   const handleFilterChange = (status) => {
-    console.log('Filter by status:', status);
-    // In production, this would filter the issues
+    // Map stat card status to priority filter
+    if (status === 'pending') {
+      // Pending shows all issues
+      setFilterPriority(null);
+    } else if (status === 'urgent') {
+      // Urgent shows only urgent priority
+      setFilterPriority(filterPriority === 'urgent' ? null : 'urgent');
+    } else if (status === 'medium') {
+      // Medium shows only medium priority
+      setFilterPriority(filterPriority === 'medium' ? null : 'medium');
+    } else if (status === 'low') {
+      // Low shows only low priority
+      setFilterPriority(filterPriority === 'low' ? null : 'low');
+    }
+    setShowFilterMenu(false);
   };
+
+  const handleSortChange = (newSort) => {
+    setSortType(newSort);
+    setShowSortMenu(false);
+  };
+
+  const handleRefresh = () => {
+    setFilterPriority(null);
+    setSortType(null);
+    setShowFilterMenu(false);
+    setShowSortMenu(false);
+  };
+
+  const getFilteredIssues = (issuesList) => {
+    let filtered = issuesList;
+    
+    // Apply priority filter
+    if (filterPriority) {
+      filtered = filtered.filter(issue => issue.priority === filterPriority);
+    }
+    
+    // Apply search query filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(issue =>
+        issue.title.toLowerCase().includes(query) ||
+        issue.description.toLowerCase().includes(query) ||
+        issue.address.toLowerCase().includes(query) ||
+        issue.location.toLowerCase().includes(query) ||
+        issue.ward.toLowerCase().includes(query) ||
+        issue.reportedBy.toLowerCase().includes(query) ||
+        issue.category.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  };
+
+  const getSortedIssues = (issuesList) => {
+    if (!sortType) return issuesList;
+    const sorted = [...issuesList];
+    if (sortType === 'priority-high') {
+      return sorted.sort((a, b) => {
+        const priorityOrder = { urgent: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+    } else if (sortType === 'priority-low') {
+      return sorted.sort((a, b) => {
+        const priorityOrder = { low: 0, medium: 1, urgent: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      });
+    }
+    return issuesList;
+  };
+
+  const filteredIssues = getSortedIssues(getFilteredIssues(issues));
+  const filteredOngoingIssues = getSortedIssues(getFilteredIssues(ongoingIssuesData));
 
   return (
     <div className="pt-md pb-md md:pb-md px-md md:px-lg max-w-7xl mx-auto">
@@ -183,6 +258,8 @@ export default function AdminDashboard() {
             <input
               type="text"
               placeholder="Search issues..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-md py-sm border border-neutral-300 rounded-md text-sm focus:outline-none focus:border-primary-700 focus:ring-2 focus:ring-primary-100"
             />
             <span className="material-icons absolute right-md top-1/2 transform -translate-y-1/2 text-neutral-400">
@@ -235,16 +312,122 @@ export default function AdminDashboard() {
               </h2>
             </div>
 
+            {/* Search Bar */}
+            <div className="mb-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by title, description, location, reporter..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-md py-md border border-neutral-300 rounded-md text-sm focus:outline-none focus:border-primary-700 focus:ring-2 focus:ring-primary-100"
+                />
+                <span className="material-icons absolute right-md top-1/2 transform -translate-y-1/2 text-neutral-400">
+                  search
+                </span>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-sm mb-md">
-              <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                <span className="material-icons text-sm">tune</span>
-                Filter
-              </button>
-              <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                <span className="material-icons text-sm">sort</span>
-                Sort
-              </button>
-              <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
+              <div className="relative">
+                <button 
+                  onClick={() => setShowFilterMenu(!showFilterMenu)}
+                  className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                    filterPriority 
+                      ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                      : 'border-neutral-300 hover:border-primary-700'
+                  }`}
+                >
+                  <span className="material-icons text-sm">tune</span>
+                  Filter {filterPriority && `(${filterPriority})`}
+                </button>
+                {showFilterMenu && (
+                  <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                    <button
+                      onClick={() => handleFilterChange('urgent')}
+                      className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                        filterPriority === 'urgent' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                      }`}
+                    >
+                      Urgent
+                      {filterPriority === 'urgent' && <span className="material-icons text-sm">check</span>}
+                    </button>
+                    <button
+                      onClick={() => handleFilterChange('medium')}
+                      className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                        filterPriority === 'medium' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                      }`}
+                    >
+                      Medium
+                      {filterPriority === 'medium' && <span className="material-icons text-sm">check</span>}
+                    </button>
+                    <button
+                      onClick={() => handleFilterChange('low')}
+                      className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                        filterPriority === 'low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                      }`}
+                    >
+                      Low
+                      {filterPriority === 'low' && <span className="material-icons text-sm">check</span>}
+                    </button>
+                    {filterPriority && (
+                      <button
+                        onClick={() => handleFilterChange(null)}
+                        className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                      >
+                        Clear Filter
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button 
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                    sortType 
+                      ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                      : 'border-neutral-300 hover:border-primary-700'
+                  }`}
+                >
+                  <span className="material-icons text-sm">sort</span>
+                  Sort {sortType && `(${sortType})`}
+                </button>
+                {showSortMenu && (
+                  <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                    <button
+                      onClick={() => handleSortChange('priority-high')}
+                      className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                        sortType === 'priority-high' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                      }`}
+                    >
+                      Priority (High to Low)
+                      {sortType === 'priority-high' && <span className="material-icons text-sm">check</span>}
+                    </button>
+                    <button
+                      onClick={() => handleSortChange('priority-low')}
+                      className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                        sortType === 'priority-low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                      }`}
+                    >
+                      Priority (Low to High)
+                      {sortType === 'priority-low' && <span className="material-icons text-sm">check</span>}
+                    </button>
+                    {sortType && (
+                      <button
+                        onClick={() => handleSortChange(null)}
+                        className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                      >
+                        Clear Sort
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={handleRefresh}
+                className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm"
+              >
                 <span className="material-icons text-sm">refresh</span>
                 Refresh
               </button>
@@ -253,7 +436,7 @@ export default function AdminDashboard() {
 
           {/* Issue Cards Feed */}
           <div className="space-y-md">
-            {issues.map((issue) => (
+            {filteredIssues.map((issue) => (
               <IssueCard
                 key={issue.id}
                 issue={issue}
@@ -276,15 +459,105 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-sm mb-md">
-                <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                  <span className="material-icons text-sm">tune</span>
-                  Filter
-                </button>
-                <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                  <span className="material-icons text-sm">sort</span>
-                  Sort
-                </button>
-                <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowFilterMenu(!showFilterMenu)}
+                    className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                      filterPriority 
+                        ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                        : 'border-neutral-300 hover:border-primary-700'
+                    }`}
+                  >
+                    <span className="material-icons text-sm">tune</span>
+                    Filter {filterPriority && `(${filterPriority})`}
+                  </button>
+                  {showFilterMenu && (
+                    <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                      <button
+                        onClick={() => handleFilterChange('urgent')}
+                        className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                          filterPriority === 'urgent' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                        }`}
+                      >
+                        Urgent
+                        {filterPriority === 'urgent' && <span className="material-icons text-sm">check</span>}
+                      </button>
+                      <button
+                        onClick={() => handleFilterChange('medium')}
+                        className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                          filterPriority === 'medium' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                        }`}
+                      >
+                        Medium
+                        {filterPriority === 'medium' && <span className="material-icons text-sm">check</span>}
+                      </button>
+                      <button
+                        onClick={() => handleFilterChange('low')}
+                        className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                          filterPriority === 'low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                        }`}
+                      >
+                        Low
+                        {filterPriority === 'low' && <span className="material-icons text-sm">check</span>}
+                      </button>
+                      {filterPriority && (
+                        <button
+                          onClick={() => handleFilterChange(null)}
+                          className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                        >
+                          Clear Filter
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowSortMenu(!showSortMenu)}
+                    className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                      sortType 
+                        ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                        : 'border-neutral-300 hover:border-primary-700'
+                    }`}
+                  >
+                    <span className="material-icons text-sm">sort</span>
+                    Sort {sortType && `(${sortType})`}
+                  </button>
+                  {showSortMenu && (
+                    <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                      <button
+                        onClick={() => handleSortChange('priority-high')}
+                        className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                          sortType === 'priority-high' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                        }`}
+                      >
+                        Priority (High to Low)
+                        {sortType === 'priority-high' && <span className="material-icons text-sm">check</span>}
+                      </button>
+                      <button
+                        onClick={() => handleSortChange('priority-low')}
+                        className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                          sortType === 'priority-low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                        }`}
+                      >
+                        Priority (Low to High)
+                        {sortType === 'priority-low' && <span className="material-icons text-sm">check</span>}
+                      </button>
+                      {sortType && (
+                        <button
+                          onClick={() => handleSortChange(null)}
+                          className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                        >
+                          Clear Sort
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button 
+                  onClick={handleRefresh}
+                  className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm"
+                >
                   <span className="material-icons text-sm">refresh</span>
                   Refresh
                 </button>
@@ -293,7 +566,7 @@ export default function AdminDashboard() {
 
             {/* Ongoing Issue Cards Feed */}
             <div className="space-y-md">
-              {ongoingIssuesData.map((issue) => (
+              {filteredOngoingIssues.map((issue) => (
                 <IssueCard
                   key={issue.id}
                   issue={issue}
@@ -353,15 +626,105 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex flex-wrap gap-sm mb-md">
-                  <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                    <span className="material-icons text-sm">tune</span>
-                    Filter
-                  </button>
-                  <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                    <span className="material-icons text-sm">sort</span>
-                    Sort
-                  </button>
-                  <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowFilterMenu(!showFilterMenu)}
+                      className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                        filterPriority 
+                          ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                          : 'border-neutral-300 hover:border-primary-700'
+                      }`}
+                    >
+                      <span className="material-icons text-sm">tune</span>
+                      Filter {filterPriority && `(${filterPriority})`}
+                    </button>
+                    {showFilterMenu && (
+                      <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                        <button
+                          onClick={() => handleFilterChange('urgent')}
+                          className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                            filterPriority === 'urgent' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                          }`}
+                        >
+                          Urgent
+                          {filterPriority === 'urgent' && <span className="material-icons text-sm">check</span>}
+                        </button>
+                        <button
+                          onClick={() => handleFilterChange('medium')}
+                          className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                            filterPriority === 'medium' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                          }`}
+                        >
+                          Medium
+                          {filterPriority === 'medium' && <span className="material-icons text-sm">check</span>}
+                        </button>
+                        <button
+                          onClick={() => handleFilterChange('low')}
+                          className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                            filterPriority === 'low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                          }`}
+                        >
+                          Low
+                          {filterPriority === 'low' && <span className="material-icons text-sm">check</span>}
+                        </button>
+                        {filterPriority && (
+                          <button
+                            onClick={() => handleFilterChange(null)}
+                            className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                          >
+                            Clear Filter
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowSortMenu(!showSortMenu)}
+                      className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                        sortType 
+                          ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                          : 'border-neutral-300 hover:border-primary-700'
+                      }`}
+                    >
+                      <span className="material-icons text-sm">sort</span>
+                      Sort {sortType && `(${sortType})`}
+                    </button>
+                    {showSortMenu && (
+                      <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                        <button
+                          onClick={() => handleSortChange('priority-high')}
+                          className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                            sortType === 'priority-high' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                          }`}
+                        >
+                          Priority (High to Low)
+                          {sortType === 'priority-high' && <span className="material-icons text-sm">check</span>}
+                        </button>
+                        <button
+                          onClick={() => handleSortChange('priority-low')}
+                          className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                            sortType === 'priority-low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                          }`}
+                        >
+                          Priority (Low to High)
+                          {sortType === 'priority-low' && <span className="material-icons text-sm">check</span>}
+                        </button>
+                        {sortType && (
+                          <button
+                            onClick={() => handleSortChange(null)}
+                            className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                          >
+                            Clear Sort
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    onClick={handleRefresh}
+                    className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm"
+                  >
                     <span className="material-icons text-sm">refresh</span>
                     Refresh
                   </button>
@@ -370,7 +733,7 @@ export default function AdminDashboard() {
 
               {/* Issue Cards Feed */}
               <div className="space-y-md mb-2xl">
-                {issues.map((issue) => (
+                {filteredIssues.map((issue) => (
                   <IssueCard
                     key={issue.id}
                     issue={issue}
@@ -393,15 +756,105 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex flex-wrap gap-sm mb-md">
-                    <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                      <span className="material-icons text-sm">tune</span>
-                      Filter
-                    </button>
-                    <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
-                      <span className="material-icons text-sm">sort</span>
-                      Sort
-                    </button>
-                    <button className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm">
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowFilterMenu(!showFilterMenu)}
+                        className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                          filterPriority 
+                            ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                            : 'border-neutral-300 hover:border-primary-700'
+                        }`}
+                      >
+                        <span className="material-icons text-sm">tune</span>
+                        Filter {filterPriority && `(${filterPriority})`}
+                      </button>
+                      {showFilterMenu && (
+                        <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                          <button
+                            onClick={() => handleFilterChange('urgent')}
+                            className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                              filterPriority === 'urgent' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                            }`}
+                          >
+                            Urgent
+                            {filterPriority === 'urgent' && <span className="material-icons text-sm">check</span>}
+                          </button>
+                          <button
+                            onClick={() => handleFilterChange('medium')}
+                            className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                              filterPriority === 'medium' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                            }`}
+                          >
+                            Medium
+                            {filterPriority === 'medium' && <span className="material-icons text-sm">check</span>}
+                          </button>
+                          <button
+                            onClick={() => handleFilterChange('low')}
+                            className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                              filterPriority === 'low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                            }`}
+                          >
+                            Low
+                            {filterPriority === 'low' && <span className="material-icons text-sm">check</span>}
+                          </button>
+                          {filterPriority && (
+                            <button
+                              onClick={() => handleFilterChange(null)}
+                              className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                            >
+                              Clear Filter
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowSortMenu(!showSortMenu)}
+                        className={`px-md py-sm border rounded-md text-sm transition-colors flex items-center gap-sm ${
+                          sortType 
+                            ? 'border-primary-700 bg-primary-50 text-primary-700' 
+                            : 'border-neutral-300 hover:border-primary-700'
+                        }`}
+                      >
+                        <span className="material-icons text-sm">sort</span>
+                        Sort {sortType && `(${sortType})`}
+                      </button>
+                      {showSortMenu && (
+                        <div className="absolute top-full mt-2 left-0 bg-white border border-neutral-300 rounded-md shadow-lg z-10 w-48">
+                          <button
+                            onClick={() => handleSortChange('priority-high')}
+                            className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between ${
+                              sortType === 'priority-high' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                            }`}
+                          >
+                            Priority (High to Low)
+                            {sortType === 'priority-high' && <span className="material-icons text-sm">check</span>}
+                          </button>
+                          <button
+                            onClick={() => handleSortChange('priority-low')}
+                            className={`w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm flex items-center justify-between border-t border-neutral-200 ${
+                              sortType === 'priority-low' ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-neutral-800'
+                            }`}
+                          >
+                            Priority (Low to High)
+                            {sortType === 'priority-low' && <span className="material-icons text-sm">check</span>}
+                          </button>
+                          {sortType && (
+                            <button
+                              onClick={() => handleSortChange(null)}
+                              className="w-full text-left px-md py-sm hover:bg-neutral-100 transition-colors text-sm border-t border-neutral-200 text-neutral-600"
+                            >
+                              Clear Sort
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button 
+                      onClick={handleRefresh}
+                      className="px-md py-sm border border-neutral-300 rounded-md text-sm hover:border-primary-700 transition-colors flex items-center gap-sm"
+                    >
                       <span className="material-icons text-sm">refresh</span>
                       Refresh
                     </button>
@@ -410,7 +863,7 @@ export default function AdminDashboard() {
 
                 {/* Ongoing Issue Cards Feed */}
                 <div className="space-y-md">
-                  {ongoingIssuesData.map((issue) => (
+                  {filteredOngoingIssues.map((issue) => (
                     <IssueCard
                       key={issue.id}
                       issue={issue}
@@ -439,6 +892,88 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* View Details Modal */}
+      {selectedIssue && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-md z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-neutral-200 px-lg py-md flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-neutral-800">{selectedIssue.title}</h2>
+              <button
+                onClick={() => setSelectedIssue(null)}
+                className="text-neutral-500 hover:text-neutral-700 transition-colors"
+              >
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-lg space-y-lg">
+              {/* Priority Badge */}
+              <div>
+                <p className="text-xs font-bold text-neutral-500 mb-sm">PRIORITY</p>
+                <div className="inline-flex items-center gap-sm px-3 py-2 rounded text-sm font-bold text-white bg-neutral-800">
+                  <span className="material-icons text-sm">priority_high</span>
+                  {selectedIssue.priority.charAt(0).toUpperCase() + selectedIssue.priority.slice(1)}
+                </div>
+              </div>
+
+              {/* Ward & Location */}
+              <div className="grid grid-cols-2 gap-lg">
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">WARD</p>
+                  <p className="text-base font-semibold text-neutral-800">{selectedIssue.ward}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">LOCATION</p>
+                  <p className="text-base font-semibold text-neutral-800">{selectedIssue.location}</p>
+                </div>
+              </div>
+
+              {/* Full Address */}
+              <div>
+                <p className="text-xs font-bold text-neutral-500 mb-sm">FULL ADDRESS</p>
+                <p className="text-base text-neutral-700">{selectedIssue.address}</p>
+              </div>
+
+              {/* Category */}
+              <div>
+                <p className="text-xs font-bold text-neutral-500 mb-sm">CATEGORY</p>
+                <p className="text-base font-semibold text-neutral-800 capitalize">{selectedIssue.category}</p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <p className="text-xs font-bold text-neutral-500 mb-sm">DESCRIPTION</p>
+                <p className="text-base text-neutral-700 leading-relaxed">{selectedIssue.description}</p>
+              </div>
+
+              {/* Reporter Info */}
+              <div className="grid grid-cols-2 gap-lg bg-neutral-50 p-lg rounded-lg border border-neutral-200">
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">REPORTED BY</p>
+                  <p className="text-base font-semibold text-neutral-800">{selectedIssue.reportedBy}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-neutral-500 mb-sm">TIME</p>
+                  <p className="text-base font-semibold text-neutral-800">{selectedIssue.timeAgo}</p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="pt-lg border-t border-neutral-200">
+                <button
+                  onClick={() => setSelectedIssue(null)}
+                  className="w-full px-md py-md bg-primary-700 text-white rounded-md font-semibold hover:bg-primary-800 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,23 @@
 'use client';
 
+import { useState } from 'react';
+
 export default function WorkerStatusPanel() {
+  const [showAllWorkers, setShowAllWorkers] = useState(false);
+
+  const allWorkers = [
+    { id: 1, name: 'John Doe', department: 'Electricity', status: 'free' },
+    { id: 2, name: 'Jane Smith', department: 'Water', status: 'onsite' },
+    { id: 3, name: 'Alice Johnson', department: 'Roads', status: 'free' },
+    { id: 4, name: 'Bob Williams', department: 'Electricity', status: 'free' },
+    { id: 5, name: 'Carol Davis', department: 'Water', status: 'onsite' },
+    { id: 6, name: 'David Miller', department: 'Roads', status: 'free' },
+    { id: 7, name: 'Emma Wilson', department: 'Fire/Emergency', status: 'break' },
+    { id: 8, name: 'Frank Brown', department: 'Electricity', status: 'onsite' },
+    { id: 9, name: 'Grace Lee', department: 'Water', status: 'free' },
+    { id: 10, name: 'Henry Moore', department: 'Roads', status: 'break' },
+  ];
+
   const workers = [
     { status: 'free', label: 'Free', count: 5, color: 'text-neutral-700' },
     { status: 'onsite', label: 'On-site', count: 3, color: 'text-neutral-700' },
@@ -59,10 +76,37 @@ export default function WorkerStatusPanel() {
         ))}
       </div>
 
-      <button className="w-full text-primary-700 text-sm font-semibold hover:text-primary-800 mb-lg flex items-center justify-center gap-sm">
+      <button 
+        onClick={() => setShowAllWorkers(!showAllWorkers)}
+        className="w-full text-primary-700 text-sm font-semibold hover:text-primary-800 mb-lg flex items-center justify-center gap-sm"
+      >
         <span className="material-icons text-lg">people</span>
-        View All Workers
+        {showAllWorkers ? 'Hide' : 'View'} All Workers ({allWorkers.length})
       </button>
+
+      {/* All Workers List */}
+      {showAllWorkers && (
+        <div className="mb-lg pb-lg border-b border-neutral-200">
+          <h4 className="text-sm font-bold text-neutral-700 mb-md">All Workers ({allWorkers.length})</h4>
+          <div className="space-y-sm max-h-96 overflow-y-auto">
+            {allWorkers.map((worker) => (
+              <div key={worker.id} className="flex items-center justify-between p-sm bg-neutral-50 rounded border border-neutral-100">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-neutral-800">{worker.name}</p>
+                  <p className="text-xs text-neutral-500">{worker.department}</p>
+                </div>
+                <span className={`text-xs font-semibold px-2 py-1 rounded ${
+                  worker.status === 'free' ? 'bg-success-100 text-success-700' :
+                  worker.status === 'onsite' ? 'bg-warning-100 text-warning-700' :
+                  'bg-neutral-100 text-neutral-700'
+                }`}>
+                  {worker.status === 'free' ? 'Free' : worker.status === 'onsite' ? 'On-site' : 'Break'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Department Breakdown */}
       <h4 className="text-sm font-bold text-neutral-700 mb-md">Department-wise</h4>
