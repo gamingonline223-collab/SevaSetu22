@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/ward-admin/$(request.auth.uid));
+    }
+    
+    // Ward admin collection
+    match /ward-admin/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow list: if isAdmin();
+    }
+    
+    // Workers collection - admins can read all
+    match /workers/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow list: if isAdmin();
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow list: if isAdmin();
+    }
+    
+    // Issues - admins and workers can read/write
+    match /issues/{issueId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      allow list: if request.auth != null;
+    }
+    
+    // Reports - admins can read/write
+    match /reports/{reportId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+      allow list: if request.auth != null;
+    }
+  }
+}
